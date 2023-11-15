@@ -162,10 +162,123 @@ void AWorldGen::CellularAutomata()
 			if(onStartingChunk)
 			{
 				onStartingChunk = false;
+				WorldArray[x][y].CanDecrease = false;
+				WorldArray[x][y].ChunkStrength = 5;
 			}
+			else
+			{
+				WorldArray[x][y].CanDecrease = true;
+
+				
+			}
+
+			WorldArray[x][y].IsAlive = true;
+			WorldArray[x][y].HasBeenGenerated = true;
+			WorldArray[x][y].ChanceToGetWeaker = 25.0f;
 		}
 	}
 }
+
+int AWorldGen::ChunkStrengthCalculator(int x, int y)
+{
+	int newStrength;
+	TArray<int> AllStrength;
+
+	int tempX;
+	int tempY;
+
+	for(int i = 0; i < 8; i++)
+	{
+		switch (i)
+		{
+		case 0:
+			tempX = x -1;
+			tempY = y -1;
+			break;
+
+		case 1:
+			tempX = 0;
+			tempY = y - 1;
+			
+			break;
+		case 2:
+			tempX = x + 1;
+			tempY = y - 1;
+			
+			break;
+		case 3:
+			tempX = x - 1;
+			tempY = y;
+			
+			break;
+		case 4:
+			tempX = x + 1;
+			tempY = y;
+			
+			break;
+		case 5:
+			tempX = x - 1;
+			tempY = y + 1;
+			
+			break;
+		case 6:
+			tempX = x;
+			tempY = y + 1;
+			
+			break;
+		case 7:
+			tempX = x + 1;
+			tempY = y + 1;
+			
+			break;
+
+		default:
+			tempX = x;
+			tempY = y;
+			break;
+		}
+		if(tempX != x && tempY != y)
+		{
+			bool isOutOfRange = IsOutOfBounds(tempX, tempY);
+			if(!isOutOfRange)
+			{
+				AllStrength.Add(WorldArray[x][y].ChunkStrength);
+			}
+		}
+
+		
+		
+
+		
+	}
+	int totalStr = 0;
+
+	for(int x = 0; x < allStrength.Max(); x++)
+	{
+		totalStr += allStrength[x];
+	}
+
+	newStrength = totalStr / allStrength.Max();
+
+	return newStrength;
+}
+
+bool AWorldGen::IsOutOfBounds(int x, int y)
+{
+	if(x < 0 || x >= worldSizeX)
+	{
+		return true;
+	}
+
+	if(y < 0 || y >= worldSizeY)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+
 
 
 // Called every frame

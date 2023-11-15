@@ -37,5 +37,8 @@ struct FChunk
 	int ChunkStrength;
 	float ChanceToGetWeaker;
 	bool CanDecrease;
+	bool StrengthDidDecrease;
+	bool HasBeenGenerated;
+	bool IsAlive;
 	
 };

@@ -33,6 +33,8 @@ public:
 	void PopulateChunk(int x, int y);
 	void SpawnCube();
 	void CellularAutomata();
+	int ChunkStrengthCalculator(int x, int y);
+	bool IsOutOfBounds(int x, int y);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite )
 	TArray<TSubclassOf<AActor>> Test;
