@@ -29,16 +29,35 @@ struct PCG_API FSecondArray
 };
 
 USTRUCT(BlueprintType)
+struct FCoOrds
+{
+	GENERATED_BODY()
+	int x;
+	int y;
+	
+};
+
+USTRUCT(BlueprintType)
+struct FChunkTypeAndStrength
+{
+	GENERATED_BODY()
+	int chunkType;
+	int chunkStr;
+	
+};
+
+USTRUCT(BlueprintType)
 struct FChunk
 {
 	GENERATED_BODY()
 	TArray<FSecondArray> ZArray;
 	int ChunkType;
-	int ChunkStrength;
+	float ChunkStrength;
 	float ChanceToGetWeaker;
 	bool CanDecrease;
 	bool StrengthDidDecrease;
 	bool HasBeenGenerated;
 	bool IsAlive;
+	TArray<FCoOrds> Neighbours;
 	
 };
