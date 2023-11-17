@@ -253,12 +253,12 @@ int AWorldGen::ChunkStrengthCalculator(int x, int y)
 	}
 	int totalStr = 0;
 
-	for(int x = 0; x < allStrength.Max(); x++)
+	for(int z = 0; z < AllStrength.Max(); z++)
 	{
-		totalStr += allStrength[x];
+		totalStr += AllStrength[z];
 	}
 
-	newStrength = totalStr / allStrength.Max();
+	newStrength = totalStr / AllStrength.Max();
 
 	return newStrength;
 }
