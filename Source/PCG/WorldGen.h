@@ -5,7 +5,9 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "customStructs.h"
+#include "Math/UnrealMathUtility.h"
 #include "BaseCube.h"
+#include "Field/FieldSystemNoiseAlgo.h"
 #include "WorldGen.generated.h"
 
 UCLASS()
@@ -18,6 +20,7 @@ public:
 	AWorldGen();
 	
 	TArray<TArray<FChunk>> WorldArray;
+	TArray<FBiome> Biomes;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite )
 	int32 chunkXSize;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite )
@@ -28,19 +31,33 @@ public:
 	int32 worldSizeX;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite )
 	int32 worldSizeY;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int biomeCount;
 
 	int GrassBiome;
 	int SandBiome;
 	int StoneBiome;
 	int SnowBiome;
 
+	
+
 	void GenerateChunks();
 	void PopulateChunk(int x, int y);
 	void SpawnCube();
+	bool CheckForAir(int worldX, int worldY, int chunkX, int chunkY, int chunkZ);
+	int BlockTypeAt(int worldX, int worldY, int chunkX, int chunkY, int chunkZ);
 	void CellularAutomata();
 	FChunkTypeAndStrength ChunkStrengthCalculator(int x, int y);
 	bool IsOutOfBounds(int x, int y);
 	void SetNeighbours(int x, int y);
+
+	void EstablishBiomes();
+	bool IsAdjacent(const FCoOrds& ChunkA,const FCoOrds& ChunkB);
+	bool AreBiomesTouching(const FBiome& BiomeA, const FBiome& BiomeB);
+	void BiomeMerge();
+	void ChunkAdjustment();
+
+	void PerlinNoiseStart();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite )
 	TArray<TSubclassOf<AActor>> Test;

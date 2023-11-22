@@ -61,3 +61,15 @@ struct FChunk
 	TArray<FCoOrds> Neighbours;
 	
 };
+
+USTRUCT(BlueprintType)
+struct FBiome
+{
+	GENERATED_BODY()
+	TArray<FChunk> BiomeChunks;
+	TArray<FCoOrds> PositionInWorld;
+	float BiomeStrength;
+	float BiomeNoiseScale;
+	int BiomeType;
+	
+};

@@ -2,17 +2,18 @@
 
 
 #include "WorldGen.h"
-#include "BaseCube.h"
+
 // Sets default values
 AWorldGen::AWorldGen()
 {
 
-	chunkXSize = 8;
-	ChunkYSize = 8;
-	ChunkZSize = 2;
+	chunkXSize = 2;
+	ChunkYSize = 2;
+	ChunkZSize = 11;
  
 	worldSizeX = 10;
 	worldSizeY = 10;
+	biomeCount = 0;
 
 	WorldArray.SetNum(worldSizeX);
 
@@ -21,6 +22,7 @@ AWorldGen::AWorldGen()
 	StoneBiome = 2;
 	SnowBiome = 3;
 
+	
 	for(int x = 0; x < worldSizeX; x++)
 	{
 		WorldArray[x].SetNum(worldSizeY);
@@ -38,10 +40,38 @@ void AWorldGen::BeginPlay()
 	GenerateChunks();
 	//SetNeighbours(0,0);
 	CellularAutomata();
+	EstablishBiomes();
+	BiomeMerge();
+	//EstablishBiomes();
+	BiomeMerge();
+	//EstablishBiomes();
+	BiomeMerge();
+	BiomeMerge();
+	BiomeMerge();
+	//EstablishBiomes();
+	//BiomeMerge();
+
+	for(int i = 0; i < Biomes.Num(); i++)
+	{
+		int temp;
+		temp = FMath::RandRange(1, 5);
+		Biomes[i].BiomeNoiseScale = temp;
+		UE_LOG(LogTemp, Warning, TEXT("biome chunk scale is %f: "), Biomes[i].BiomeNoiseScale);
+	}
+	PerlinNoiseStart();
+	ChunkAdjustment();
 
 	if(WorldArray[0][0].Neighbours.Num() == 3)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("00 has 3 chunks near it"));
+		//UE_LOG(LogTemp, Warning, TEXT("00 has 3 chunks near it"));
+	}
+	biomeCount = Biomes.Num();
+	for(int i = 0; i < Biomes.Num(); i++)
+	{
+		for(int x = 0; x < Biomes[i].BiomeChunks.Num(); x++)
+		{
+			//UE_LOG(LogTemp, Warning, TEXT("biome type then chunk type is %d: %d"), Biomes[i].BiomeType,Biomes[i].BiomeChunks[x].ChunkType);
+		}
 	}
 	SpawnCube();
 }
@@ -52,6 +82,9 @@ void AWorldGen::GenerateChunks()
 	{
 		for(int o = 0; o < worldSizeY; o++)
 		{
+			//float test = FMath::PerlinNoise2D(FVector2D(i + 0.1,o + 0.1));
+			//test++;
+			//UE_LOG(LogTemp, Warning, TEXT("perlin noise test value is: %f"), test);
 			PopulateChunk(i,o);
 		}
 	}
@@ -63,7 +96,7 @@ void AWorldGen::SpawnCube()
 
 	if(World)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("world is true"));
+		//UE_LOG(LogTemp, Warning, TEXT("world is true"));
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.Owner = this;
 		SpawnParams.Instigator = GetInstigator();
@@ -79,6 +112,24 @@ void AWorldGen::SpawnCube()
 					{
 						for(int t = 0; t < chunkXSize; t++)
 						{
+							bool canSpawn = CheckForAir(q,w,t,r,e);
+							int blockIs = WorldArray[q][w].ZArray[e].SecondArray[r].FirstArray[t];
+							UE_LOG(LogTemp, Warning, TEXT("element at world array x y z is: %d %d %d %d %d %d"),q,w,t,r,e, blockIs);
+
+							if(canSpawn)
+							{
+								FVector SpawnLocation = FVector(ChunkXCoOrd + (t*100),ChunkYCoOrd + (r*100),(e*100));
+								FRotator SpawnRotation = FRotator(0.0f,0.0f,0.0f);
+								World->SpawnActor<AActor>(Test[WorldArray[q][w].ChunkType], SpawnLocation, SpawnRotation, SpawnParams);
+							}
+							else
+							{
+								UE_LOG(LogTemp, Warning, TEXT("block no spawn"));
+									
+								
+							}
+
+							
 							//UE_LOG(LogTemp, Warning, TEXT("Array Size: %d"), WorldArray[q][w].ZArray.Num());
 							FChunk Temp;
 							FSecondArray ZArrayTemp;
@@ -90,9 +141,13 @@ void AWorldGen::SpawnCube()
 							//int ChunkXCoOrd = q * chunkXSize;
 							//int ChunkYCoOrd = w * ChunkYSize;
 
-							FVector SpawnLocation = FVector(ChunkXCoOrd + (t*100),ChunkYCoOrd + (r*100),(e*100));
-							FRotator SpawnRotation = FRotator(0.0f,0.0f,0.0f);
-							World->SpawnActor<AActor>(Test[WorldArray[q][w].ChunkType], SpawnLocation, SpawnRotation, SpawnParams);
+						
+							if(!WorldArray[q][w].IsAlive)
+							{
+								
+							}
+							
+							
 							/*
 
 							bool isEven;
@@ -132,6 +187,158 @@ void AWorldGen::SpawnCube()
 	}
 }
 
+bool AWorldGen::CheckForAir(int worldX, int worldY, int chunkX, int chunkY, int chunkZ)
+{
+	//needs to know if block is at border
+	//if not at border then it needs to check its up, down, left, right, forward, backward
+	//if at border it needs to check the adjacent border to see if visable
+	bool airFound = false;
+	int currentBlockTypeToCheck;
+
+	for(int i = 0; i < 1; i++)
+	{
+		if(!airFound)
+		{
+			break;
+		}
+		switch(i)
+		{
+		case (0):
+			if(chunkZ >= ChunkZSize)
+			{
+				airFound = true;
+			}
+			else
+			{
+				currentBlockTypeToCheck = BlockTypeAt(worldX,worldY,chunkX,chunkY,chunkZ+1);
+				if(currentBlockTypeToCheck == -1)
+				{
+					airFound = true;
+					return true;
+				}
+					//do check
+				
+			}
+			
+			break;
+		case (1):
+			if(chunkZ <= 0)
+			{
+				airFound = true;
+			}
+			else
+			{
+				currentBlockTypeToCheck = BlockTypeAt(worldX,worldY,chunkX,chunkY,chunkZ-1);
+				if(currentBlockTypeToCheck == -1)
+				{
+					airFound = true;
+				}
+					
+				
+			}
+			break;
+		case(2):
+			if(chunkY == 0)
+			{
+				//check world array x y-1
+				currentBlockTypeToCheck = BlockTypeAt(worldX,worldY-1,chunkX,ChunkYSize-1,chunkZ);
+				if(currentBlockTypeToCheck == -1)
+				{
+					airFound = true;
+				}
+			}
+			else
+			{
+				currentBlockTypeToCheck = BlockTypeAt(worldX,worldY,chunkX,chunkY-1,chunkZ);
+				if(currentBlockTypeToCheck == -1)
+				{
+					airFound = true;
+				}
+					
+				
+			}
+			
+			break;
+		case(3):
+			if(chunkY >= ChunkYSize-1)
+			{
+				currentBlockTypeToCheck = BlockTypeAt(worldX,worldY+1,chunkX,0,chunkZ);
+				if(currentBlockTypeToCheck == -1)
+				{
+					airFound = true;
+				}
+				//check world array x y+1
+			}
+			else
+			{
+				currentBlockTypeToCheck = BlockTypeAt(worldX,worldY,chunkX,chunkY+1,chunkZ);
+				if(currentBlockTypeToCheck == -1)
+				{
+					airFound = true;
+				}
+			}
+			
+			break;
+		case(4):
+			if(chunkX <= 0)
+			{
+				currentBlockTypeToCheck = BlockTypeAt(worldX-1,worldY,chunkXSize-1,chunkY,chunkZ);
+				if(currentBlockTypeToCheck == -1)
+				{
+					airFound = true;
+				}
+				//check world array x-1 y
+			}
+			else
+			{
+				currentBlockTypeToCheck = BlockTypeAt(worldX,worldY,chunkX-1,chunkY,chunkZ);
+				if(currentBlockTypeToCheck == -1)
+				{
+					airFound = true;
+				}
+			}
+			
+			break;
+		case(5):
+			if(chunkX >= chunkXSize-1)
+			{
+				currentBlockTypeToCheck = BlockTypeAt(worldX+1,worldY,0,chunkY,chunkZ);
+				if(currentBlockTypeToCheck == -1)
+				{
+					airFound = true;
+				}
+				//check world array x+1 y
+			}
+			else
+			{
+				currentBlockTypeToCheck = BlockTypeAt(worldX,worldY,chunkX + 1,chunkY,chunkZ);
+				if(currentBlockTypeToCheck == -1)
+				{
+					airFound = true;
+				}
+					
+			}
+			
+			break;
+			
+		}
+		
+	}
+	return airFound;
+		
+}
+
+int AWorldGen::BlockTypeAt(int worldX, int worldY, int chunkX, int chunkY, int chunkZ)
+{
+	if(IsOutOfBounds(worldX,worldY))
+	{
+		return -1;
+	}
+	return WorldArray[worldX][worldY].ZArray[chunkZ].SecondArray[chunkY].FirstArray[chunkX];
+}
+
+
+
 
 void AWorldGen::PopulateChunk(int x, int y)
 {
@@ -148,15 +355,25 @@ void AWorldGen::PopulateChunk(int x, int y)
 
 			for(int q = 0; q < chunkXSize; q++)
 			{
-				firstArray.FirstArray.Add(chunkType);
+				firstArray.FirstArray.Add(-1);
 
+				UE_LOG(LogTemp, Warning, TEXT("Element at index %d: %d: %d"), i,z,q);
 				
-				//UE_LOG(LogTemp, Warning, TEXT("Element at index %d: %d"), q, firstArray.FirstArray[q]);
 			}
 			SecondArray.SecondArray.Add(firstArray);
 		}
 		zArray.ZArray.Add(SecondArray);
+
+		
 	}
+	zArray.IsAlive = true;
+	float randStr = FMath::RandRange(0,5);
+	int randType = FMath::RandRange(0,3);
+	FChunkTypeAndStrength tempType;
+	tempType.chunkStr = randStr;
+	tempType.chunkType = randType;
+	zArray.ChunkStrength = randStr;
+	zArray.ChunkType = randType;
 	WorldArray[x][y] = zArray;
 }
 
@@ -182,6 +399,7 @@ void AWorldGen::CellularAutomata()
 				WorldArray[x][y].ChunkStrength = 5;
 				int RandomNum = FMath::RandRange(0,3);
 				WorldArray[x][y].ChunkType = RandomNum;
+				biomeCount++;
 			}
 			else
 			{
@@ -191,6 +409,7 @@ void AWorldGen::CellularAutomata()
 			WorldArray[x][y].IsAlive = true;
 			WorldArray[x][y].HasBeenGenerated = true;
 			WorldArray[x][y].ChanceToGetWeaker = 25.0f;
+			SetNeighbours(x,y);
 			chunkTypeStr = ChunkStrengthCalculator(x,y);
 			WorldArray[x][y].ChunkStrength = chunkTypeStr.chunkStr;
 			WorldArray[x][y].ChunkType = chunkTypeStr.chunkType;
@@ -211,6 +430,7 @@ FChunkTypeAndStrength AWorldGen::ChunkStrengthCalculator(int x, int y)
 
 	for(int i = 0; i < currentChunk.Neighbours.Num(); i++)
 	{
+		//UE_LOG(LogTemp, Log, TEXT("Iteration %d"), i)
 		if(WorldArray[currentChunk.Neighbours[i].x][currentChunk.Neighbours[i].y].IsAlive)
 		{
 			FChunkTypeAndStrength tempTypeStr;
@@ -224,11 +444,14 @@ FChunkTypeAndStrength AWorldGen::ChunkStrengthCalculator(int x, int y)
 		}
 	}
 
+	//UE_LOG(LogTemp, Log, TEXT("Size of TArray: %d"), typeAndStr.Num());
+
 	if(typeAndStr.Num() == 0)
 	{
 		//needs to be a new chunk
 		int newChunkType = FMath::RandRange(0,3);
 		FChunkTypeAndStrength newChunk;
+		biomeCount++;
 		newChunk.chunkStr = 5;
 		newChunk.chunkType = newChunkType;
 
@@ -302,8 +525,8 @@ FChunkTypeAndStrength AWorldGen::ChunkStrengthCalculator(int x, int y)
 	}
 
 	float averageStr = currentStrongestType.chunkStr / totalTypes;
-	int decreaseChance = FMath::RandRange(0,1);
-	if(decreaseChance == 1)
+	int decreaseChance = FMath::RandRange(0,100);
+	if(decreaseChance <= 90)
 	{
 		averageStr--;
 		if(averageStr < 0)
@@ -323,19 +546,19 @@ FChunkTypeAndStrength AWorldGen::ChunkStrengthCalculator(int x, int y)
 
 bool AWorldGen::IsOutOfBounds(int x, int y)
 {
-	UE_LOG(LogTemp, Warning, TEXT("is out of bounds started"));
+	//UE_LOG(LogTemp, Warning, TEXT("is out of bounds started"));
 	if(x < 0 || x >= worldSizeX)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("is out of bounds"));
+		//UE_LOG(LogTemp, Warning, TEXT("is out of bounds"));
 		return true;
 	}
 
 	if(y < 0 || y >= worldSizeY)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("is out of bounds"));
+		//UE_LOG(LogTemp, Warning, TEXT("is out of bounds"));
 		return true;
 	}
-	UE_LOG(LogTemp, Warning, TEXT("is not out of bounds"));
+	//UE_LOG(LogTemp, Warning, TEXT("is not out of bounds"));
 
 	return false;
 }
@@ -351,49 +574,49 @@ void AWorldGen::SetNeighbours(int x, int y)
 		switch (i)
 		{
 		case 0:
-			UE_LOG(LogTemp, Warning, TEXT("checking 0"));
+			//UE_LOG(LogTemp, Warning, TEXT("checking 0"));
 			tempX = x -1;
 			tempY = y -1;
 			break;
 
 		case 1:
-			UE_LOG(LogTemp, Warning, TEXT("checking 1"));
+			//UE_LOG(LogTemp, Warning, TEXT("checking 1"));
 			tempX = 0;
 			tempY = y - 1;
 			
 			break;
 		case 2:
-			UE_LOG(LogTemp, Warning, TEXT("checking 2"));
+			//UE_LOG(LogTemp, Warning, TEXT("checking 2"));
 			tempX = x + 1;
 			tempY = y - 1;
 			
 			break;
 		case 3:
-			UE_LOG(LogTemp, Warning, TEXT("checking 3"));
+			//UE_LOG(LogTemp, Warning, TEXT("checking 3"));
 			tempX = x - 1;
 			tempY = y;
 			
 			break;
 		case 4:
-			UE_LOG(LogTemp, Warning, TEXT("checking 4"));
+			//UE_LOG(LogTemp, Warning, TEXT("checking 4"));
 			tempX = x + 1;
 			tempY = y;
 			
 			break;
 		case 5:
-			UE_LOG(LogTemp, Warning, TEXT("checking 5"));
+			//UE_LOG(LogTemp, Warning, TEXT("checking 5"));
 			tempX = x - 1;
 			tempY = y + 1;
 			
 			break;
 		case 6:
-			UE_LOG(LogTemp, Warning, TEXT("checking 6"));
+			//UE_LOG(LogTemp, Warning, TEXT("checking 6"));
 			tempX = x;
 			tempY = y + 1;
 			
 			break;
 		case 7:
-			UE_LOG(LogTemp, Warning, TEXT("checking 7"));
+			//UE_LOG(LogTemp, Warning, TEXT("checking 7"));
 			tempX = x + 1;
 			tempY = y + 1;
 			
@@ -411,6 +634,277 @@ void AWorldGen::SetNeighbours(int x, int y)
 		
 	}
 }
+
+bool AWorldGen::IsAdjacent(const FCoOrds& ChunkA,const FCoOrds& ChunkB)
+{
+	const FChunk& ChunkAData = WorldArray[ChunkA.x][ChunkA.y];
+	for (const FCoOrds& Neighbor : ChunkAData.Neighbours)
+	{
+		if (Neighbor.x == ChunkB.x && Neighbor.y == ChunkB.y)
+		{
+			return true;
+		}
+	}
+	return false;
+
+}
+
+
+void AWorldGen::EstablishBiomes()
+{
+	for (int32 x = 0; x < worldSizeX; x++)
+	{
+		for (int32 y = 0; y < worldSizeY; y++)
+		{
+			bool bFoundInBiome = false;
+			for (FBiome& Biome : Biomes)
+			{
+				if (Biome.BiomeType == WorldArray[x][y].ChunkType)
+				{
+					for (const FCoOrds& ChunkCoords : Biome.PositionInWorld)
+					{
+						if (IsAdjacent(ChunkCoords, FCoOrds{ x, y }))
+						{
+							Biome.PositionInWorld.Add(FCoOrds{ x, y });
+							Biome.BiomeChunks.Add(WorldArray[x][y]);
+							//Biome.BiomeStrength = 0;
+							Biome.BiomeStrength += WorldArray[x][y].ChunkStrength;
+							bFoundInBiome = true;
+							break;
+						}
+					}
+					if (bFoundInBiome)
+						break;
+				}
+			}
+
+			if (!bFoundInBiome)
+			{
+				FBiome NewBiome;
+				NewBiome.BiomeType = WorldArray[x][y].ChunkType;
+				NewBiome.PositionInWorld.Add(FCoOrds{ x, y });
+				NewBiome.BiomeChunks.Add(WorldArray[x][y]);
+				NewBiome.BiomeStrength = 0;
+				NewBiome.BiomeStrength += WorldArray[x][y].ChunkStrength;
+				Biomes.Add(NewBiome);
+			}
+		}
+	}
+
+	biomeCount = Biomes.Num();
+}
+
+void AWorldGen::BiomeMerge()
+{
+	int NumBiomes = Biomes.Num();
+
+	for (int32 i = 0; i < NumBiomes; ++i)
+	{
+		for (int32 j = 0; j < NumBiomes; ++j)
+		{
+			if(j == i)
+			{
+				break;
+			}
+			if(j >= NumBiomes)
+			{
+				break;
+			}
+			if(i >= NumBiomes)
+			{
+				break;
+			}
+			const FBiome& BiomeA = Biomes[i];
+			const FBiome& BiomeB = Biomes[j];
+
+			if (AreBiomesTouching(BiomeA, BiomeB))
+			{
+				//int strengthCheck;
+				bool canMerge = true;
+
+				if(BiomeA.BiomeStrength >= 1000.0f)
+				{
+					canMerge = false;
+				}
+				else if(BiomeB.BiomeStrength >= 1000.0f)
+				{
+					canMerge = false;
+				}
+
+				if(canMerge)
+				{
+					//UE_LOG(LogTemp, Warning, TEXT("luuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuck"));
+					TArray<FChunk> tempNewBiome;
+					float newStr = 0;
+					if(BiomeA.BiomeStrength > BiomeB.BiomeStrength)
+					{
+						//merge
+						for(int x = 0; x < Biomes[j].BiomeChunks.Num(); x++)
+						{
+							//UE_LOG(LogTemp, Warning, TEXT("fuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuck"));
+							
+							tempNewBiome.Add(Biomes[j].BiomeChunks[x]);
+							
+						}
+
+						for(int x = 0; x < Biomes[i].BiomeChunks.Num(); x++)
+						{
+							tempNewBiome.Add(Biomes[i].BiomeChunks[x]);
+						}
+
+						newStr = BiomeA.BiomeStrength + BiomeB.BiomeStrength;
+
+						Biomes[i].BiomeChunks = tempNewBiome;
+						Biomes[i].BiomeStrength = newStr;
+						
+						Biomes.RemoveAt(j);
+						NumBiomes--;
+					
+					}
+					else if(BiomeB.BiomeStrength > BiomeA.BiomeStrength)
+					{
+						for(int x = 0; x < Biomes[j].BiomeChunks.Num(); x++)
+						{
+							tempNewBiome.Add(Biomes[j].BiomeChunks[x]);
+						}
+
+						for(int x = 0; x < Biomes[i].BiomeChunks.Num(); x++)
+						{
+							tempNewBiome.Add(Biomes[i].BiomeChunks[x]);
+						}
+
+						newStr = BiomeA.BiomeStrength + BiomeB.BiomeStrength;
+
+						Biomes[j].BiomeChunks = tempNewBiome;
+						Biomes[j].BiomeStrength = newStr;
+						
+						Biomes.RemoveAt(i);
+
+						
+						NumBiomes--;
+						//merge
+					}
+					
+				}
+				
+				// Do something if BiomeA and BiomeB are touching
+				// For example: Output their types or take any specific action
+				//UE_LOG(LogTemp, Warning, TEXT("Biomes of type %d and %d are touching!"), BiomeA.BiomeType, BiomeB.BiomeType);
+			}
+		}
+	}
+
+}
+
+
+bool AWorldGen::AreBiomesTouching(const FBiome& BiomeA, const FBiome& BiomeB)
+{
+	for (const FCoOrds& ChunkA : BiomeA.PositionInWorld)
+	{
+		for (const FCoOrds& ChunkB : BiomeB.PositionInWorld)
+		{
+			if (IsAdjacent(ChunkA, ChunkB))
+			{
+				return true; // Biomes are touching
+			}
+		}
+	}
+	return false; // Biomes are not touching
+
+}
+
+void AWorldGen::ChunkAdjustment()
+{
+	int blockType = 0;
+	for(int a = 0; a < Biomes.Num(); a++)
+	{
+		//UE_LOG(LogTemp, Warning, TEXT("STR in Biome index is %d: %f"), a, Biomes[a].BiomeStrength);
+		bool isEven;
+		int evenCheck = a;
+		if(evenCheck % 2 == 0)
+		{
+			isEven = true;
+			//UE_LOG(LogTemp, Warning, TEXT("is even"));
+		}
+		else
+		{
+			//UE_LOG(LogTemp, Warning, TEXT("is false"));
+			isEven = false;
+		}
+
+		//Biomes[a].BiomeNoiseScale = FMath::RandRange(1, 5);
+
+		UE_LOG(LogTemp, Warning, TEXT("chunks in biome is  %d: %d"), a, Biomes[a].BiomeChunks.Num());
+		for(int s = 0; s < Biomes[a].BiomeChunks.Num(); s++)
+		{
+			if(isEven)
+			{
+				//UE_LOG(LogTemp, Warning, TEXT("ahhhhhhhhhhh"));
+				Biomes[a].BiomeChunks[s].IsAlive = false;
+			}
+			Biomes[a].BiomeChunks[s].ChunkType = Biomes[a].BiomeType;
+		}
+	}
+
+	//PerlinNoiseStart();
+
+
+	
+	for(int i = 0; i < worldSizeX; i++)
+	{
+		for(int z = 0; z < worldSizeY; z++)
+		{
+
+			for(int q = 0; q < WorldArray[i][z].ZArray.Num(); q++)
+			{
+				for(int w = 0; w < WorldArray[i][z].ZArray[q].SecondArray.Num(); w++)
+				{
+					for(int e = 0; e < WorldArray[i][z].ZArray[q].SecondArray[w].FirstArray.Num(); e++)
+					{
+						if(WorldArray[z][i].ZArray[q].SecondArray[w].FirstArray[e] == -1)
+						{
+							//WorldArray[z][i].ZArray[q].SecondArray[w].FirstArray[e] = WorldArray[i][z].ChunkType;	
+						}
+						else
+						{
+							break;
+						}
+						
+					}
+				}
+			}
+		}
+	}
+}
+
+void AWorldGen::PerlinNoiseStart()
+{
+	
+	
+
+	for(int i = 0; i < Biomes.Num(); i++)
+	{
+		for(int o = 0; o < Biomes[i].BiomeChunks.Num();o++)
+		{
+				for(int j = 0; j < Biomes[i].BiomeChunks[o].ZArray[0].SecondArray.Num();j++)
+				{
+					for(int k = 0; k < Biomes[i].BiomeChunks[o].ZArray[0].SecondArray[j].FirstArray.Num();k++)
+					{
+						float zHeight = FMath::PerlinNoise2D(FVector2D(j + 0.1,k + 0.1));
+						zHeight++;
+						int temp = FMath::RoundToInt(zHeight);
+						temp = Biomes[i].BiomeNoiseScale * temp;
+						UE_LOG(LogTemp, Warning, TEXT("zHeight value is: %d"), temp);
+						Biomes[i].BiomeChunks[o].ZArray[temp].SecondArray[j].FirstArray[k] = Biomes[i].BiomeType;
+						int blockIs = Biomes[i].BiomeChunks[o].ZArray[temp].SecondArray[j].FirstArray[k];
+						UE_LOG(LogTemp, Warning, TEXT("element at biome x y z is: %d %d %d %d %d %d"),i,o,temp,j,k, blockIs);
+					}
+				}
+			
+		}
+	}
+}
+
 
 
 
