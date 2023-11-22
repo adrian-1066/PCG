@@ -58,6 +58,7 @@ struct FChunk
 	bool StrengthDidDecrease;
 	bool HasBeenGenerated;
 	bool IsAlive;
+	float ChunkNoiseScale;
 	TArray<FCoOrds> Neighbours;
 	
 };
