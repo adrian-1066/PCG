@@ -33,6 +33,10 @@ public:
 	int32 worldSizeY;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int biomeCount;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int blocksSpawned;
+
+	int RandomSeed;
 
 	int GrassBiome;
 	int SandBiome;
@@ -58,6 +62,7 @@ public:
 	void ChunkAdjustment();
 
 	void PerlinNoiseStart();
+	void CaveNoiseGenerator();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite )
 	TArray<TSubclassOf<AActor>> Test;

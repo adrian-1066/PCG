@@ -7,9 +7,12 @@
 AWorldGen::AWorldGen()
 {
 
+	srand(time(nullptr));
+
+	RandomSeed = FMath::RandRange(10000,99999);
 	chunkXSize = 6;
 	ChunkYSize = 6;
-	ChunkZSize = 11;
+	ChunkZSize = 100;
  
 	worldSizeX = 10;
 	worldSizeY = 10;
@@ -21,6 +24,8 @@ AWorldGen::AWorldGen()
 	SandBiome = 1;
 	StoneBiome = 2;
 	SnowBiome = 3;
+
+	blocksSpawned = 0;
 
 	
 	for(int x = 0; x < worldSizeX; x++)
@@ -73,6 +78,7 @@ void AWorldGen::BeginPlay()
 			//UE_LOG(LogTemp, Warning, TEXT("biome type then chunk type is %d: %d"), Biomes[i].BiomeType,Biomes[i].BiomeChunks[x].ChunkType);
 		}
 	}
+	CaveNoiseGenerator();
 	SpawnCube();
 }
 
@@ -116,11 +122,14 @@ void AWorldGen::SpawnCube()
 							int blockIs = WorldArray[q][w].ZArray[e].SecondArray[r].FirstArray[t];
 							if(blockIs != -1)
 							{
-								FVector SpawnLocation = FVector(ChunkXCoOrd + (t*100),ChunkYCoOrd + (r*100),(e*100));
-								FRotator SpawnRotation = FRotator(0.0f,0.0f,0.0f);
-								World->SpawnActor<AActor>(Test[WorldArray[q][w].ChunkType], SpawnLocation, SpawnRotation, SpawnParams);	
+								
 								if(canSpawn)
 								{
+									FVector SpawnLocation = FVector(ChunkXCoOrd + (t*100),ChunkYCoOrd + (r*100),(e*100));
+									FRotator SpawnRotation = FRotator(0.0f,0.0f,0.0f);
+									blocksSpawned++;
+									World->SpawnActor<AActor>(Test[WorldArray[q][w].ChunkType], SpawnLocation, SpawnRotation, SpawnParams);	
+									
 									
 								}
 								
@@ -206,16 +215,17 @@ bool AWorldGen::CheckForAir(int worldX, int worldY, int chunkX, int chunkY, int 
 
 	for(int i = 0; i < 6; i++)
 	{
-		if(!airFound)
+		if(airFound)
 		{
 			break;
 		}
 		switch(i)
 		{
 		case (0):
-			if(chunkZ >= ChunkZSize)
+			if(chunkZ >= ChunkZSize-1)
 			{
 				airFound = true;
+				return true;
 			}
 			else
 			{
@@ -876,10 +886,24 @@ void AWorldGen::ChunkAdjustment()
 				for(int n=0; n < ChunkYSize; n++)
 				{
 					isDone[b][n] = false;
+
+					for(int f = 0; f < ChunkZSize; f++)
+					{
+						if(WorldArray[i][z].ZArray[f].SecondArray[n].FirstArray[b] <= -1)
+						{
+							WorldArray[i][z].ZArray[f].SecondArray[n].FirstArray[b] = WorldArray[i][z].ChunkType;
+						}
+						else
+						{
+							break;
+								
+							
+						}
+					}
 				}
 			}
 
-			for(int q = 0; q < WorldArray[i][z].ZArray.Num(); q++)
+			/*for(int q = 0; q < WorldArray[i][z].ZArray.Num(); q++)
 			{
 				for(int w = 0; w < WorldArray[i][z].ZArray[q].SecondArray.Num(); w++)
 				{
@@ -907,7 +931,7 @@ void AWorldGen::ChunkAdjustment()
 						
 					}
 				}
-			}
+			}*/
 		}
 	}
 }
@@ -938,19 +962,28 @@ void AWorldGen::PerlinNoiseStart()
 			
 		}
 	}*/
+	
 
 	for(int q = 0; q < worldSizeX; q++)
 	{
 		for(int w = 0; w < worldSizeY; w++)
 		{
+			float tempScale = FMath::PerlinNoise2D(FVector2D(q + 0.04,w + 0.04));
+			tempScale += 1;
+			tempScale *= 10;
+			tempScale = FMath::RoundToInt(tempScale);
+			
+			WorldArray[q][w].ChunkNoiseScale = tempScale;
 			for(int y = 0; y < WorldArray[q][w].ZArray[0].SecondArray.Num(); y++)
 			{
 				for(int x = 0; x < WorldArray[q][w].ZArray[0].SecondArray[y].FirstArray.Num(); x++)
 				{
-					WorldArray[q][w].ChunkNoiseScale = 3;//FMath::RandRange(1,5);
+					
 					int xMul = chunkXSize * q;
 					int yMul = ChunkYSize * w;
-					float zHeight = FMath::PerlinNoise2D(FVector2D(x + xMul + 0.1,y + yMul + 0.1));
+
+					//the smaller the float that is added on the flatter the terrain will be
+					float zHeight = FMath::PerlinNoise2D(FVector2D(((x * RandomSeed )) + xMul + 0.035,((y*RandomSeed))+ yMul + 0.035));
 					zHeight++;
 					zHeight *= WorldArray[q][w].ChunkNoiseScale;
 					int temp = FMath::RoundToInt(zHeight);
@@ -962,7 +995,42 @@ void AWorldGen::PerlinNoiseStart()
 			}
 		}
 	}
+
+
+	
 }
+
+void AWorldGen::CaveNoiseGenerator()
+{
+	//attempting to use 3d perlin noise to generate caves
+
+	for(int worldX = 0; worldX < worldSizeX; worldX++)
+	{
+		for(int worldY = 0; worldY < worldSizeY; worldY++)
+		{
+			for(int z = 0; z < ChunkZSize; z++)
+			{
+				for(int y = 0; y <ChunkYSize; y++)
+				{
+					for(int x = 0; x < chunkXSize; x++)
+					{
+						int xMul = chunkXSize * worldX;
+						int yMul = ChunkYSize * worldY;
+						
+						float isAir = FMath::PerlinNoise3D(FVector((x + xMul + RandomSeed) / 10.0f,(y + yMul + RandomSeed)/10.0f,(z + RandomSeed)/10.0f));
+						UE_LOG(LogTemp, Warning, TEXT("isAir is: %f"),isAir);
+
+						if(isAir < -0.03)
+						{
+							WorldArray[worldX][worldY].ZArray[z].SecondArray[y].FirstArray[x] = -1;
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 
 
 
