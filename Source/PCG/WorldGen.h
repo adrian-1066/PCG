@@ -37,6 +37,7 @@ public:
 	int blocksSpawned;
 
 	int RandomSeed;
+	int MaxNoiseScale;
 
 	int GrassBiome;
 	int SandBiome;

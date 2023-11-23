@@ -14,8 +14,8 @@ AWorldGen::AWorldGen()
 	ChunkYSize = 6;
 	ChunkZSize = 100;
  
-	worldSizeX = 10;
-	worldSizeY = 10;
+	worldSizeX = 20;
+	worldSizeY = 20;
 	biomeCount = 0;
 
 	WorldArray.SetNum(worldSizeX);
@@ -26,6 +26,12 @@ AWorldGen::AWorldGen()
 	SnowBiome = 3;
 
 	blocksSpawned = 0;
+
+	MaxNoiseScale = (ChunkZSize/2) - 1;
+	if(MaxNoiseScale <= 0)
+	{
+		MaxNoiseScale = 0;
+	}
 
 	
 	for(int x = 0; x < worldSizeX; x++)
@@ -59,7 +65,26 @@ void AWorldGen::BeginPlay()
 	for(int i = 0; i < Biomes.Num(); i++)
 	{
 		int temp;
-		temp = FMath::RandRange(1, 5);
+		switch (Biomes[i].BiomeType)
+		{
+			case(0):
+				temp = FMath::RandRange((MaxNoiseScale/2)-5, MaxNoiseScale/2);
+				break;
+			case(1):
+				temp = FMath::RandRange((MaxNoiseScale/2)-5, MaxNoiseScale/2);
+				break;
+			case(2):
+				temp = FMath::RandRange(MaxNoiseScale-10, MaxNoiseScale);
+				break;
+			case(3):
+				temp = FMath::RandRange((MaxNoiseScale/2)-5, MaxNoiseScale/2);
+				break;
+			default:
+				temp = FMath::RandRange((MaxNoiseScale/2)-5, MaxNoiseScale/2);
+				break;
+		}
+		
+		
 		Biomes[i].BiomeNoiseScale = temp;
 		//UE_LOG(LogTemp, Warning, TEXT("biome chunk scale is %f: "), Biomes[i].BiomeNoiseScale);
 	}
@@ -128,6 +153,7 @@ void AWorldGen::SpawnCube()
 									FVector SpawnLocation = FVector(ChunkXCoOrd + (t*100),ChunkYCoOrd + (r*100),(e*100));
 									FRotator SpawnRotation = FRotator(0.0f,0.0f,0.0f);
 									blocksSpawned++;
+									UE_LOG(LogTemp, Warning, TEXT("block to spawn is: %d"),WorldArray[q][w].ChunkType);
 									World->SpawnActor<AActor>(Test[WorldArray[q][w].ChunkType], SpawnLocation, SpawnRotation, SpawnParams);	
 									
 									
@@ -741,19 +767,29 @@ void AWorldGen::BiomeMerge()
 				//int strengthCheck;
 				bool canMerge = true;
 
-				if(BiomeA.BiomeStrength >= 1000.0f)
+				if(BiomeA.BiomeStrength >= 100.0f)
 				{
 					canMerge = false;
 				}
-				else if(BiomeB.BiomeStrength >= 1000.0f)
+				else if(BiomeB.BiomeStrength >= 100.0f)
 				{
 					canMerge = false;
+				}
+
+				if(BiomeA.BiomeChunks.Num() <= 3)
+				{
+					canMerge = true;
+				}
+				else if(BiomeB.BiomeChunks.Num() <= 3)
+				{
+					canMerge = true;
 				}
 
 				if(canMerge)
 				{
 					//UE_LOG(LogTemp, Warning, TEXT("luuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuck"));
-					TArray<FChunk> tempNewBiome;
+					FBiome tempNewBiome;
+					FCoOrds coOrdsToAdd;
 					float newStr = 0;
 					if(BiomeA.BiomeStrength > BiomeB.BiomeStrength)
 					{
@@ -762,18 +798,27 @@ void AWorldGen::BiomeMerge()
 						{
 							//UE_LOG(LogTemp, Warning, TEXT("fuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuck"));
 							
-							tempNewBiome.Add(Biomes[j].BiomeChunks[x]);
+							tempNewBiome.BiomeChunks.Add(Biomes[j].BiomeChunks[x]);
+							
+							coOrdsToAdd.x = Biomes[j].PositionInWorld[x].x;
+							coOrdsToAdd.y = Biomes[j].PositionInWorld[x].y;
+							tempNewBiome.PositionInWorld.Add(coOrdsToAdd);
+							tempNewBiome.BiomeType = BiomeA.BiomeType;
+							
 							
 						}
 
 						for(int x = 0; x < Biomes[i].BiomeChunks.Num(); x++)
 						{
-							tempNewBiome.Add(Biomes[i].BiomeChunks[x]);
+							tempNewBiome.BiomeChunks.Add(Biomes[i].BiomeChunks[x]);
+							coOrdsToAdd.x = Biomes[i].PositionInWorld[x].x;
+							coOrdsToAdd.y = Biomes[i].PositionInWorld[x].y;
+							tempNewBiome.PositionInWorld.Add(coOrdsToAdd);
 						}
 
 						newStr = BiomeA.BiomeStrength + BiomeB.BiomeStrength;
 
-						Biomes[i].BiomeChunks = tempNewBiome;
+						Biomes[i] = tempNewBiome;
 						Biomes[i].BiomeStrength = newStr;
 						
 						Biomes.RemoveAt(j);
@@ -784,17 +829,24 @@ void AWorldGen::BiomeMerge()
 					{
 						for(int x = 0; x < Biomes[j].BiomeChunks.Num(); x++)
 						{
-							tempNewBiome.Add(Biomes[j].BiomeChunks[x]);
+							tempNewBiome.BiomeChunks.Add(Biomes[j].BiomeChunks[x]);
+							coOrdsToAdd.x = Biomes[j].PositionInWorld[x].x;
+							coOrdsToAdd.y = Biomes[j].PositionInWorld[x].y;
+							tempNewBiome.PositionInWorld.Add(coOrdsToAdd);
+							tempNewBiome.BiomeType = BiomeB.BiomeType;
 						}
 
 						for(int x = 0; x < Biomes[i].BiomeChunks.Num(); x++)
 						{
-							tempNewBiome.Add(Biomes[i].BiomeChunks[x]);
+							tempNewBiome.BiomeChunks.Add(Biomes[i].BiomeChunks[x]);
+							coOrdsToAdd.x = Biomes[i].PositionInWorld[x].x;
+							coOrdsToAdd.y = Biomes[i].PositionInWorld[x].y;
+							tempNewBiome.PositionInWorld.Add(coOrdsToAdd);
 						}
 
 						newStr = BiomeA.BiomeStrength + BiomeB.BiomeStrength;
 
-						Biomes[j].BiomeChunks = tempNewBiome;
+						Biomes[j] = tempNewBiome;
 						Biomes[j].BiomeStrength = newStr;
 						
 						Biomes.RemoveAt(i);
@@ -862,6 +914,12 @@ void AWorldGen::ChunkAdjustment()
 				Biomes[a].BiomeChunks[s].IsAlive = false;
 			}
 			Biomes[a].BiomeChunks[s].ChunkType = Biomes[a].BiomeType;
+			WorldArray[Biomes[a].PositionInWorld[s].x][Biomes[a].PositionInWorld[s].y].ChunkType = Biomes[a].BiomeType;
+			float tempNoiseAdj = FMath::PerlinNoise2D(FVector2D(Biomes[a].PositionInWorld[s].x + RandomSeed,Biomes[a].PositionInWorld[s].y + RandomSeed));
+			int tempIntAdj = FMath::RoundToInt(tempNoiseAdj);
+			
+
+			WorldArray[Biomes[a].PositionInWorld[s].x][Biomes[a].PositionInWorld[s].y].ChunkNoiseScale = Biomes[a].BiomeNoiseScale + tempIntAdj;
 		}
 	}
 
@@ -973,7 +1031,7 @@ void AWorldGen::PerlinNoiseStart()
 			tempScale *= 10;
 			tempScale = FMath::RoundToInt(tempScale);
 			
-			WorldArray[q][w].ChunkNoiseScale = tempScale;
+			//WorldArray[q][w].ChunkNoiseScale = tempScale;
 			for(int y = 0; y < WorldArray[q][w].ZArray[0].SecondArray.Num(); y++)
 			{
 				for(int x = 0; x < WorldArray[q][w].ZArray[0].SecondArray[y].FirstArray.Num(); x++)
@@ -1010,6 +1068,10 @@ void AWorldGen::CaveNoiseGenerator()
 		{
 			for(int z = 0; z < ChunkZSize; z++)
 			{
+				if(z == 0)
+				{
+					continue;
+				}
 				for(int y = 0; y <ChunkYSize; y++)
 				{
 					for(int x = 0; x < chunkXSize; x++)
@@ -1018,7 +1080,7 @@ void AWorldGen::CaveNoiseGenerator()
 						int yMul = ChunkYSize * worldY;
 						
 						float isAir = FMath::PerlinNoise3D(FVector((x + xMul + RandomSeed) / 10.0f,(y + yMul + RandomSeed)/10.0f,(z + RandomSeed)/10.0f));
-						UE_LOG(LogTemp, Warning, TEXT("isAir is: %f"),isAir);
+						//UE_LOG(LogTemp, Warning, TEXT("isAir is: %f"),isAir);
 
 						if(isAir < -0.03)
 						{
