@@ -43,6 +43,7 @@ public:
 	int SandBiome;
 	int StoneBiome;
 	int SnowBiome;
+	float caveGenChacne;
 
 	
 

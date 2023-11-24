@@ -6,62 +6,39 @@
 // Sets default values
 AWorldGen::AWorldGen()
 {
-
 	srand(time(nullptr));
-
 	RandomSeed = FMath::RandRange(10000,99999);
 	chunkXSize = 6;
 	ChunkYSize = 6;
 	ChunkZSize = 100;
- 
-	worldSizeX = 20;
-	worldSizeY = 20;
+	worldSizeX = 10;
+	worldSizeY = 10;
 	biomeCount = 0;
-
 	WorldArray.SetNum(worldSizeX);
-
 	GrassBiome = 0;
 	SandBiome = 1;
 	StoneBiome = 2;
 	SnowBiome = 3;
-
 	blocksSpawned = 0;
-
+	caveGenChacne = -0.25f;
 	MaxNoiseScale = (ChunkZSize/2) - 1;
 	if(MaxNoiseScale <= 0)
 	{
 		MaxNoiseScale = 0;
 	}
-
-	
 	for(int x = 0; x < worldSizeX; x++)
 	{
 		WorldArray[x].SetNum(worldSizeY);
 	}
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-
 }
-
-// Called when the game starts or when spawned
 void AWorldGen::BeginPlay()
 {
 	Super::BeginPlay();
-	
 	GenerateChunks();
-	//SetNeighbours(0,0);
 	CellularAutomata();
 	EstablishBiomes();
 	BiomeMerge();
-	//EstablishBiomes();
-	BiomeMerge();
-	//EstablishBiomes();
-	BiomeMerge();
-	BiomeMerge();
-	BiomeMerge();
-	//EstablishBiomes();
-	//BiomeMerge();
-
 	for(int i = 0; i < Biomes.Num(); i++)
 	{
 		int temp;
@@ -83,26 +60,10 @@ void AWorldGen::BeginPlay()
 				temp = FMath::RandRange((MaxNoiseScale/2)-5, MaxNoiseScale/2);
 				break;
 		}
-		
-		
 		Biomes[i].BiomeNoiseScale = temp;
-		//UE_LOG(LogTemp, Warning, TEXT("biome chunk scale is %f: "), Biomes[i].BiomeNoiseScale);
 	}
-	//PerlinNoiseStart();
 	ChunkAdjustment();
-
-	if(WorldArray[0][0].Neighbours.Num() == 3)
-	{
-		//UE_LOG(LogTemp, Warning, TEXT("00 has 3 chunks near it"));
-	}
 	biomeCount = Biomes.Num();
-	for(int i = 0; i < Biomes.Num(); i++)
-	{
-		for(int x = 0; x < Biomes[i].BiomeChunks.Num(); x++)
-		{
-			//UE_LOG(LogTemp, Warning, TEXT("biome type then chunk type is %d: %d"), Biomes[i].BiomeType,Biomes[i].BiomeChunks[x].ChunkType);
-		}
-	}
 	CaveNoiseGenerator();
 	SpawnCube();
 }
@@ -113,9 +74,6 @@ void AWorldGen::GenerateChunks()
 	{
 		for(int o = 0; o < worldSizeY; o++)
 		{
-			//float test = FMath::PerlinNoise2D(FVector2D(i + 0.1,o + 0.1));
-			//test++;
-			//UE_LOG(LogTemp, Warning, TEXT("perlin noise test value is: %f"), test);
 			PopulateChunk(i,o);
 		}
 	}
@@ -124,10 +82,8 @@ void AWorldGen::GenerateChunks()
 void AWorldGen::SpawnCube()
 {
 	UWorld* const World = GetWorld();
-
 	if(World)
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("world is true"));
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.Owner = this;
 		SpawnParams.Instigator = GetInstigator();
@@ -147,95 +103,33 @@ void AWorldGen::SpawnCube()
 							int blockIs = WorldArray[q][w].ZArray[e].SecondArray[r].FirstArray[t];
 							if(blockIs != -1)
 							{
-								
 								if(canSpawn)
 								{
 									FVector SpawnLocation = FVector(ChunkXCoOrd + (t*100),ChunkYCoOrd + (r*100),(e*100));
 									FRotator SpawnRotation = FRotator(0.0f,0.0f,0.0f);
 									blocksSpawned++;
-									UE_LOG(LogTemp, Warning, TEXT("block to spawn is: %d"),WorldArray[q][w].ChunkType);
 									World->SpawnActor<AActor>(Test[WorldArray[q][w].ChunkType], SpawnLocation, SpawnRotation, SpawnParams);	
-									
-									
 								}
-								
 							}
-							//UE_LOG(LogTemp, Warning, TEXT("element at world array x y z is: %d %d %d %d %d %d"),q,w,t,r,e, blockIs);
-							
-							if(canSpawn)
-							{
-								
-							}
-							else
-							{
-								//UE_LOG(LogTemp, Warning, TEXT("block no spawn"));
-									
-								
-							}
-
-							
-							//UE_LOG(LogTemp, Warning, TEXT("Array Size: %d"), WorldArray[q][w].ZArray.Num());
 							FChunk Temp;
 							FSecondArray ZArrayTemp;
 							FArrayOne XArrayTemp;
 							Temp = WorldArray[q][w];
 							ZArrayTemp = Temp.ZArray[e];
 							XArrayTemp = ZArrayTemp.SecondArray[r];
-
-							//int ChunkXCoOrd = q * chunkXSize;
-							//int ChunkYCoOrd = w * ChunkYSize;
-
-						
 							if(!WorldArray[q][w].IsAlive)
 							{
-								
 							}
-							
-							
-							/*
-
-							bool isEven;
-							int evenCheck = q + w;
-							if(evenCheck % 2 == 0)
-							{
-								isEven = true;
-							}
-							else
-							{
-								isEven = false;
-									
-								
-							}
-
-							if(isEven)
-							{
-								World->SpawnActor<AActor>(Test[1], SpawnLocation, SpawnRotation, SpawnParams);
-							}
-							else
-							{
-								World->SpawnActor<AActor>(Test[0], SpawnLocation, SpawnRotation, SpawnParams);	
-							}*/
-							
-
-							
 						}
 					}
 				}
 			}
 		}
-
-		//FVector SpawnLocation = FVector(0.0f,0.0f,0.0f);
-		// SpawnRotation = FRotator(0.0f,0.0f,0.0f);
-
-		//World->SpawnActor<AActor>(Test, SpawnLocation, SpawnRotation, SpawnParams);
 	}
 }
 
 bool AWorldGen::CheckForAir(int worldX, int worldY, int chunkX, int chunkY, int chunkZ)
 {
-	//needs to know if block is at border
-	//if not at border then it needs to check its up, down, left, right, forward, backward
-	//if at border it needs to check the adjacent border to see if visable
 	bool airFound = false;
 	int currentBlockTypeToCheck;
 
@@ -261,10 +155,7 @@ bool AWorldGen::CheckForAir(int worldX, int worldY, int chunkX, int chunkY, int 
 					airFound = true;
 					return true;
 				}
-					//do check
-				
 			}
-			
 			break;
 		case (1):
 			if(chunkZ <= 0)
@@ -278,14 +169,11 @@ bool AWorldGen::CheckForAir(int worldX, int worldY, int chunkX, int chunkY, int 
 				{
 					airFound = true;
 				}
-					
-				
 			}
 			break;
 		case(2):
 			if(chunkY == 0)
 			{
-				//check world array x y-1
 				currentBlockTypeToCheck = BlockTypeAt(worldX,worldY-1,chunkX,ChunkYSize-1,chunkZ);
 				if(currentBlockTypeToCheck == -1)
 				{
@@ -299,10 +187,7 @@ bool AWorldGen::CheckForAir(int worldX, int worldY, int chunkX, int chunkY, int 
 				{
 					airFound = true;
 				}
-					
-				
 			}
-			
 			break;
 		case(3):
 			if(chunkY >= ChunkYSize-1)
@@ -312,7 +197,6 @@ bool AWorldGen::CheckForAir(int worldX, int worldY, int chunkX, int chunkY, int 
 				{
 					airFound = true;
 				}
-				//check world array x y+1
 			}
 			else
 			{
@@ -322,7 +206,6 @@ bool AWorldGen::CheckForAir(int worldX, int worldY, int chunkX, int chunkY, int 
 					airFound = true;
 				}
 			}
-			
 			break;
 		case(4):
 			if(chunkX <= 0)
@@ -332,7 +215,6 @@ bool AWorldGen::CheckForAir(int worldX, int worldY, int chunkX, int chunkY, int 
 				{
 					airFound = true;
 				}
-				//check world array x-1 y
 			}
 			else
 			{
@@ -342,7 +224,6 @@ bool AWorldGen::CheckForAir(int worldX, int worldY, int chunkX, int chunkY, int 
 					airFound = true;
 				}
 			}
-			
 			break;
 		case(5):
 			if(chunkX >= chunkXSize-1)
@@ -352,7 +233,6 @@ bool AWorldGen::CheckForAir(int worldX, int worldY, int chunkX, int chunkY, int 
 				{
 					airFound = true;
 				}
-				//check world array x+1 y
 			}
 			else
 			{
@@ -361,16 +241,11 @@ bool AWorldGen::CheckForAir(int worldX, int worldY, int chunkX, int chunkY, int 
 				{
 					airFound = true;
 				}
-					
 			}
-			
 			break;
-			
 		}
-		
 	}
 	return airFound;
-		
 }
 
 int AWorldGen::BlockTypeAt(int worldX, int worldY, int chunkX, int chunkY, int chunkZ)
@@ -381,14 +256,8 @@ int AWorldGen::BlockTypeAt(int worldX, int worldY, int chunkX, int chunkY, int c
 	}
 	return WorldArray[worldX][worldY].ZArray[chunkZ].SecondArray[chunkY].FirstArray[chunkX];
 }
-
-
-
-
 void AWorldGen::PopulateChunk(int x, int y)
 {
-
-	
 	FChunk zArray;
 	int chunkType = WorldArray[x][y].ChunkType;
 	for(int i = 0; i < ChunkZSize; i++)
@@ -397,19 +266,13 @@ void AWorldGen::PopulateChunk(int x, int y)
 		for(int z = 0; z < ChunkYSize; z++)
 		{
 			FArrayOne firstArray;
-
 			for(int q = 0; q < chunkXSize; q++)
 			{
 				firstArray.FirstArray.Add(-1);
-
-				//UE_LOG(LogTemp, Warning, TEXT("Element at index %d: %d: %d"), i,z,q);
-				
 			}
 			SecondArray.SecondArray.Add(firstArray);
 		}
 		zArray.ZArray.Add(SecondArray);
-
-		
 	}
 	zArray.IsAlive = true;
 	float randStr = FMath::RandRange(0,5);
@@ -424,13 +287,6 @@ void AWorldGen::PopulateChunk(int x, int y)
 
 void AWorldGen::CellularAutomata()
 {
-	//this is stage one
-	/*
-	 *rules for chunks
-	 *if first chunk then set strength to 5 and that the chunks around it cant get weaker
-	 *have the chance increase after every new chunk for the next chunk to decrease in strength
-	 *when strength is 0 that chunk is a border chunk
-	 */
 	bool onStartingChunk = true;
 	FChunkTypeAndStrength chunkTypeStr;
 	for(int x = 0; x < worldSizeX; x++)
@@ -450,7 +306,6 @@ void AWorldGen::CellularAutomata()
 			{
 				WorldArray[x][y].CanDecrease = true;
 			}
-
 			WorldArray[x][y].IsAlive = true;
 			WorldArray[x][y].HasBeenGenerated = true;
 			WorldArray[x][y].ChanceToGetWeaker = 25.0f;
@@ -467,15 +322,12 @@ FChunkTypeAndStrength AWorldGen::ChunkStrengthCalculator(int x, int y)
 	FChunkTypeAndStrength newStrength;
 	TArray<FChunkTypeAndStrength> typeAndStr;
 	FChunk currentChunk = WorldArray[x][y];
-
 	int typeGrassStr = 0;//0
 	int typeSandStr = 0;//1
 	int typeSnowStr = 0;//3
 	int typeStoneStr = 0;//2
-
 	for(int i = 0; i < currentChunk.Neighbours.Num(); i++)
 	{
-		//UE_LOG(LogTemp, Log, TEXT("Iteration %d"), i)
 		if(WorldArray[currentChunk.Neighbours[i].x][currentChunk.Neighbours[i].y].IsAlive)
 		{
 			FChunkTypeAndStrength tempTypeStr;
@@ -488,21 +340,15 @@ FChunkTypeAndStrength AWorldGen::ChunkStrengthCalculator(int x, int y)
 			
 		}
 	}
-
-	//UE_LOG(LogTemp, Log, TEXT("Size of TArray: %d"), typeAndStr.Num());
-
 	if(typeAndStr.Num() == 0)
 	{
-		//needs to be a new chunk
 		int newChunkType = FMath::RandRange(0,3);
 		FChunkTypeAndStrength newChunk;
 		biomeCount++;
 		newChunk.chunkStr = 5;
 		newChunk.chunkType = newChunkType;
-
 		return newChunk;
 	}
-
 	for(int z = 0; z < typeAndStr.Num(); z++)
 	{
 		int currentType = typeAndStr[z].chunkType;
@@ -522,18 +368,14 @@ FChunkTypeAndStrength AWorldGen::ChunkStrengthCalculator(int x, int y)
 				break;
 		}
 	}
-
-
 	FChunkTypeAndStrength currentStrongestType;
 	currentStrongestType.chunkType = 0;
 	currentStrongestType.chunkStr = typeGrassStr;
-
 	for(int i = 0; i < 4; i++)
 	{
 		switch (i)
 		{
 			case(0):
-				
 				break;
 			case(1):
 				if(typeSandStr > currentStrongestType.chunkStr)
@@ -558,9 +400,7 @@ FChunkTypeAndStrength AWorldGen::ChunkStrengthCalculator(int x, int y)
 				break;
 		}
 	}
-
 	int totalTypes = 0;
-
 	for(int z = 0; z < currentChunk.Neighbours.Num(); z++)
 	{
 		if(currentStrongestType.chunkType == WorldArray[currentChunk.Neighbours[z].x][currentChunk.Neighbours[z].y].ChunkType)
@@ -568,7 +408,6 @@ FChunkTypeAndStrength AWorldGen::ChunkStrengthCalculator(int x, int y)
 			totalTypes++;
 		}
 	}
-
 	float averageStr = currentStrongestType.chunkStr / totalTypes;
 	int decreaseChance = FMath::RandRange(0,100);
 	if(decreaseChance <= 90)
@@ -581,30 +420,19 @@ FChunkTypeAndStrength AWorldGen::ChunkStrengthCalculator(int x, int y)
 	}
 	newStrength.chunkStr = averageStr;
 	newStrength.chunkType = currentStrongestType.chunkType;
-
-		
-	
-	
-
 	return newStrength;
 }
 
 bool AWorldGen::IsOutOfBounds(int x, int y)
 {
-	//UE_LOG(LogTemp, Warning, TEXT("is out of bounds started"));
 	if(x < 0 || x >= worldSizeX)
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("is out of bounds"));
 		return true;
 	}
-
 	if(y < 0 || y >= worldSizeY)
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("is out of bounds"));
 		return true;
 	}
-	//UE_LOG(LogTemp, Warning, TEXT("is not out of bounds"));
-
 	return false;
 }
 
@@ -612,59 +440,41 @@ void AWorldGen::SetNeighbours(int x, int y)
 {
 	int tempX;
 	int tempY;
-
 	for(int i = 0; i < 8; i++)
 	{
-		
 		switch (i)
 		{
 		case 0:
-			//UE_LOG(LogTemp, Warning, TEXT("checking 0"));
 			tempX = x -1;
 			tempY = y -1;
 			break;
-
 		case 1:
-			//UE_LOG(LogTemp, Warning, TEXT("checking 1"));
 			tempX = 0;
 			tempY = y - 1;
-			
 			break;
 		case 2:
-			//UE_LOG(LogTemp, Warning, TEXT("checking 2"));
 			tempX = x + 1;
 			tempY = y - 1;
-			
 			break;
 		case 3:
-			//UE_LOG(LogTemp, Warning, TEXT("checking 3"));
 			tempX = x - 1;
 			tempY = y;
-			
 			break;
 		case 4:
-			//UE_LOG(LogTemp, Warning, TEXT("checking 4"));
 			tempX = x + 1;
 			tempY = y;
-			
 			break;
 		case 5:
-			//UE_LOG(LogTemp, Warning, TEXT("checking 5"));
 			tempX = x - 1;
 			tempY = y + 1;
-			
 			break;
 		case 6:
-			//UE_LOG(LogTemp, Warning, TEXT("checking 6"));
 			tempX = x;
 			tempY = y + 1;
-			
 			break;
 		case 7:
-			//UE_LOG(LogTemp, Warning, TEXT("checking 7"));
 			tempX = x + 1;
 			tempY = y + 1;
-			
 			break;
 		}
 
@@ -787,7 +597,6 @@ void AWorldGen::BiomeMerge()
 
 				if(canMerge)
 				{
-					//UE_LOG(LogTemp, Warning, TEXT("luuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuck"));
 					FBiome tempNewBiome;
 					FCoOrds coOrdsToAdd;
 					float newStr = 0;
@@ -796,10 +605,7 @@ void AWorldGen::BiomeMerge()
 						//merge
 						for(int x = 0; x < Biomes[j].BiomeChunks.Num(); x++)
 						{
-							//UE_LOG(LogTemp, Warning, TEXT("fuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuck"));
-							
 							tempNewBiome.BiomeChunks.Add(Biomes[j].BiomeChunks[x]);
-							
 							coOrdsToAdd.x = Biomes[j].PositionInWorld[x].x;
 							coOrdsToAdd.y = Biomes[j].PositionInWorld[x].y;
 							tempNewBiome.PositionInWorld.Add(coOrdsToAdd);
@@ -923,7 +729,7 @@ void AWorldGen::ChunkAdjustment()
 		}
 	}
 
-	PerlinNoiseStart();
+	//PerlinNoiseStart();
 
 
 	
@@ -949,7 +755,7 @@ void AWorldGen::ChunkAdjustment()
 					{
 						if(WorldArray[i][z].ZArray[f].SecondArray[n].FirstArray[b] <= -1)
 						{
-							WorldArray[i][z].ZArray[f].SecondArray[n].FirstArray[b] = WorldArray[i][z].ChunkType;
+							//WorldArray[i][z].ZArray[f].SecondArray[n].FirstArray[b] = WorldArray[i][z].ChunkType;
 						}
 						else
 						{
@@ -961,72 +767,18 @@ void AWorldGen::ChunkAdjustment()
 				}
 			}
 
-			/*for(int q = 0; q < WorldArray[i][z].ZArray.Num(); q++)
-			{
-				for(int w = 0; w < WorldArray[i][z].ZArray[q].SecondArray.Num(); w++)
-				{
-					for(int e = 0; e < WorldArray[i][z].ZArray[q].SecondArray[w].FirstArray.Num(); e++)
-					{
-						if(isDone[e][w])
-						{
-							break;
-						}
-						if(WorldArray[i][z].ZArray[q].SecondArray[w].FirstArray[e] == -1)
-						{
-							UE_LOG(LogTemp, Warning, TEXT("loop done block was air"));
-							//found
-							//break;
-							WorldArray[i][z].ZArray[q].SecondArray[w].FirstArray[e] = WorldArray[i][z].ChunkType;	
-						}
-						else
-						{
-							UE_LOG(LogTemp, Warning, TEXT("loop skipped block was there"));
-							isDone[e][w] = true;
-							//WorldArray[z][i].ZArray[q].SecondArray[w].FirstArray[e] = WorldArray[i][z].ChunkType;
-							break;
-							
-						}
-						
-					}
-				}
-			}*/
+			
 		}
 	}
 }
 
 void AWorldGen::PerlinNoiseStart()
 {
-	
-	
-/*
-	for(int i = 0; i < Biomes.Num(); i++)
-	{
-		for(int o = 0; o < Biomes[i].BiomeChunks.Num();o++)
-		{
-				for(int j = 0; j < Biomes[i].BiomeChunks[o].ZArray[0].SecondArray.Num();j++)
-				{
-					for(int k = 0; k < Biomes[i].BiomeChunks[o].ZArray[0].SecondArray[j].FirstArray.Num();k++)
-					{
-						float zHeight = FMath::PerlinNoise2D(FVector2D(j + 0.1,k + 0.1));
-						zHeight++;
-						int temp = FMath::RoundToInt(zHeight);
-						temp = Biomes[i].BiomeNoiseScale * temp;
-						//UE_LOG(LogTemp, Warning, TEXT("zHeight value is: %d"), temp);
-						Biomes[i].BiomeChunks[o].ZArray[temp].SecondArray[j].FirstArray[k] = Biomes[i].BiomeType;
-						int blockIs = Biomes[i].BiomeChunks[o].ZArray[temp].SecondArray[j].FirstArray[k];
-						//UE_LOG(LogTemp, Warning, TEXT("element at biome z y x is: %d %d %d %d %d %d"),i,o,temp,j,k, blockIs);
-					}
-				}
-			
-		}
-	}*/
-	
-
 	for(int q = 0; q < worldSizeX; q++)
 	{
 		for(int w = 0; w < worldSizeY; w++)
 		{
-			float tempScale = FMath::PerlinNoise2D(FVector2D(q + 0.04,w + 0.04));
+			float tempScale = FMath::PerlinNoise2D(FVector2D(q + 0.035,w + 0.035));
 			tempScale += 1;
 			tempScale *= 10;
 			tempScale = FMath::RoundToInt(tempScale);
@@ -1041,10 +793,15 @@ void AWorldGen::PerlinNoiseStart()
 					int yMul = ChunkYSize * w;
 
 					//the smaller the float that is added on the flatter the terrain will be
-					float zHeight = FMath::PerlinNoise2D(FVector2D(((x * RandomSeed )) + xMul + 0.035,((y*RandomSeed))+ yMul + 0.035));
-					zHeight++;
+					float zHeight = FMath::PerlinNoise2D(FVector2D(((1.25 * RandomSeed )+ xMul + x),((1.25*RandomSeed)+ yMul + y)));
+					
+					zHeight += 1.0f;
 					zHeight *= WorldArray[q][w].ChunkNoiseScale;
-					int temp = FMath::RoundToInt(zHeight);
+					int temp = FMath::FloorToInt(zHeight);
+					//temp += WorldArray[q][w].ChunkNoiseScale;
+					//temp -= zHeight;
+					
+					
 					//temp = temp * WorldArray[q][w].ChunkNoiseScale;
 
 					WorldArray[q][w].ZArray[temp].SecondArray[y].FirstArray[x] = WorldArray[q][w].ChunkType;
@@ -1079,25 +836,75 @@ void AWorldGen::CaveNoiseGenerator()
 						int xMul = chunkXSize * worldX;
 						int yMul = ChunkYSize * worldY;
 						
-						float isAir = FMath::PerlinNoise3D(FVector((x + xMul + RandomSeed) / 10.0f,(y + yMul + RandomSeed)/10.0f,(z + RandomSeed)/10.0f));
+						float isAir = FMath::PerlinNoise3D(FVector((x + xMul + RandomSeed) / 5.0f,(y + yMul + RandomSeed)/5.0f,(z + RandomSeed)/5.0f));
 						//UE_LOG(LogTemp, Warning, TEXT("isAir is: %f"),isAir);
+						float tempChance = caveGenChacne;
+						if(WorldArray[worldX][worldY].ChunkType == 2)
+						{
+							tempChance -= (z/500);
+						}
+						else
+						{
+							tempChance -= (z/100);
+						}
 
-						if(isAir < -0.03)
+						if(isAir < tempChance)
 						{
 							WorldArray[worldX][worldY].ZArray[z].SecondArray[y].FirstArray[x] = -1;
+						}
+						else if(z <= WorldArray[worldX][worldY].ChunkNoiseScale)
+						{
+							WorldArray[worldX][worldY].ZArray[z].SecondArray[y].FirstArray[x] = WorldArray[worldX][worldY].ChunkType;
 						}
 					}
 				}
 			}
+			int xMul = chunkXSize * worldX;
+			int yMul = ChunkYSize * worldY;
+
+			//the smaller the float that is added on the flatter the terrain will be
+			
+			for(int z = WorldArray[worldX][worldY].ChunkNoiseScale; z < WorldArray[worldX][worldY].ChunkNoiseScale + 2; z++ )
+			{
+				for(int y = 0; y < ChunkYSize; y++)
+				{
+					for(int x = 0; x < chunkXSize; x++ )
+					{
+						float zHeight = FMath::PerlinNoise3D(FVector((x + xMul + RandomSeed) / 10.0f,(y + yMul + RandomSeed)/10.0f,(z + RandomSeed)/10.0f));
+
+						if(zHeight < 0.0f)
+						{
+							WorldArray[worldX][worldY].ZArray[z].SecondArray[y].FirstArray[x] = WorldArray[worldX][worldY].ChunkType;
+						}
+					}
+				}
+			}
+			
+/*
+			for(int x = 0; x < chunkXSize; x++ )
+			{
+				for(int y = 0; y < ChunkYSize; y++)
+				{
+					float zHeight = FMath::PerlinNoise2D(FVector2D(((x * RandomSeed )+ xMul + x),((y *RandomSeed)+ yMul + y)));
+					
+					zHeight += 1.0f;
+					zHeight *= 2;
+					int temp = FMath::FloorToInt(zHeight);
+					//temp *= 2;
+					for(int z = WorldArray[worldX][worldY].ChunkNoiseScale; z < WorldArray[worldX][worldY].ChunkNoiseScale + temp; z++)
+					{
+						float isBlock = FMath::PerlinNoise3D(FVector((x + xMul + RandomSeed) / 10.0f,(y + yMul + RandomSeed)/10.0f,(z + RandomSeed)/10.0f));
+						if(isBlock <= 0.7f)
+						{
+							WorldArray[worldX][worldY].ZArray[z].SecondArray[y].FirstArray[x] = WorldArray[worldX][worldY].ChunkType;
+						}
+						
+					}
+				}
+			}*/
 		}
 	}
 }
-
-
-
-
-
-
 
 // Called every frame
 void AWorldGen::Tick(float DeltaTime)
