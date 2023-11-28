@@ -493,6 +493,25 @@ void AWorldGen::SetNeighbours(int x, int y)
 bool AWorldGen::IsAdjacent(const FCoOrds& ChunkA,const FCoOrds& ChunkB)
 {
 	const FChunk& ChunkAData = WorldArray[ChunkA.x][ChunkA.y];
+	int chunkAX = ChunkA.x; int chunkAY = ChunkA.y;
+	int chunkBX = ChunkB.x; int chunkBY = ChunkB.y;
+
+	for(int i = 0; i < WorldArray[ChunkA.x][ChunkA.y].Neighbours.Num(); i++)
+	{
+		if(WorldArray[ChunkA.x][ChunkA.y].Neighbours[i].x == ChunkB.x && WorldArray[ChunkA.x][ChunkA.y].Neighbours[i].y == ChunkB.y)
+		{
+			int tempX = ChunkA.x - ChunkB.x;
+			int tempY = ChunkA.y - ChunkB.y;
+
+			int numToCheck = tempX + tempY;
+			if(numToCheck == 1 || numToCheck == -1)
+			{
+				return true;
+			}
+		}
+		
+	}
+	/*
 	for (const FCoOrds& Neighbor : ChunkAData.Neighbours)
 	{
 		if (Neighbor.x == ChunkB.x && Neighbor.y == ChunkB.y)
@@ -500,6 +519,7 @@ bool AWorldGen::IsAdjacent(const FCoOrds& ChunkA,const FCoOrds& ChunkB)
 			return true;
 		}
 	}
+	*/
 	return false;
 
 }
@@ -559,10 +579,12 @@ void AWorldGen::BiomeMerge()
 		{
 			if(j == i)
 			{
-				break;
+				continue;
+				//break;
 			}
 			if(j >= NumBiomes)
 			{
+				
 				break;
 			}
 			if(i >= NumBiomes)
@@ -577,20 +599,20 @@ void AWorldGen::BiomeMerge()
 				//int strengthCheck;
 				bool canMerge = true;
 
-				if(BiomeA.BiomeStrength >= 100.0f)
+				if(BiomeA.BiomeStrength >= 75.0f)
 				{
 					canMerge = false;
 				}
-				else if(BiomeB.BiomeStrength >= 100.0f)
+				else if(BiomeB.BiomeStrength >= 75.0f)
 				{
 					canMerge = false;
 				}
 
-				if(BiomeA.BiomeChunks.Num() <= 3)
+				if(BiomeA.BiomeChunks.Num() <= 4)
 				{
 					canMerge = true;
 				}
-				else if(BiomeB.BiomeChunks.Num() <= 3)
+				else if(BiomeB.BiomeChunks.Num() <= 4)
 				{
 					canMerge = true;
 				}
@@ -905,6 +927,89 @@ void AWorldGen::CaveNoiseGenerator()
 		}
 	}
 }
+
+void AWorldGen::chunkMergeAdj()
+{
+	//first world loop
+	for(int x1 = 0; x1 < worldSizeX; x1++)
+	{
+		for(int y1 = 0; y1 < worldSizeY; y1++)
+		{
+			//second world loop
+			for(int x2 = 0; x2 < worldSizeX; x2++)
+			{
+				for(int y2 = 0; y2 < worldSizeY; y2++)
+				{
+					FCoOrds firstCo; FCoOrds secondCo;
+					firstCo.x = x1; firstCo.y = y1;
+					secondCo.x = x2; secondCo.y = y2;
+					bool areAdjacent = IsAdjacent(firstCo, secondCo);
+					if(!areAdjacent)
+					{
+						continue;
+					}
+
+					if(WorldArray[x1][y1].ChunkType == WorldArray[x2][y2].ChunkType)
+					{
+						continue;
+					}
+
+					//need to get direction
+					FCoOrds tempDir;
+					tempDir.x = firstCo.x - secondCo.x;
+					tempDir.y = firstCo.y - secondCo.y;
+
+					if(tempDir.x == 1)
+					{
+						//left
+					}
+					else if(tempDir.x == -1)
+					{
+						//right
+					}
+					else if(tempDir.y == 1)
+					{
+						//up
+					}
+					else if(tempDir.y == -1)
+					{
+						//down
+					}
+
+					
+
+					
+
+
+					
+				}
+			}
+		}
+	}
+	
+}
+
+void AWorldGen::chunkAdjLerp(FCoOrds chunkOne, FCoOrds chunkTwo, FCoOrds dir)
+{
+	
+	for(int x = chunkXSize/2; x > 0 || x < chunkXSize; x += dir.x)
+	{
+		for(int y = ChunkYSize/2; y > 0 || y < ChunkYSize; y += dir.y)
+		{
+			//find z height for co ords
+			//lerp between high and low points
+			//add or minus based on lerp
+			//now lerp in own chunk
+			for(int z1 = ChunkZSize -1; z1 > 0; z1--)
+			{
+				
+			}
+		}
+	}
+}
+
+
+
 
 // Called every frame
 void AWorldGen::Tick(float DeltaTime)

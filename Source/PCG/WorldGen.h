@@ -66,6 +66,9 @@ public:
 	void PerlinNoiseStart();
 	void CaveNoiseGenerator();
 
+	void chunkMergeAdj();
+	void chunkAdjLerp(FCoOrds chunkOne,FCoOrds chunkTwo, FCoOrds dir);
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite )
 	TArray<TSubclassOf<AActor>> Test;
 
