@@ -60,6 +60,7 @@ struct FChunk
 	bool IsAlive;
 	float ChunkNoiseScale;
 	TArray<FCoOrds> Neighbours;
+	FSecondArray Heights; 
 	
 };
 

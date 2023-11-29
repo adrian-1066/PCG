@@ -67,7 +67,8 @@ public:
 	void CaveNoiseGenerator();
 
 	void chunkMergeAdj();
-	void chunkAdjLerp(FCoOrds chunkOne,FCoOrds chunkTwo, FCoOrds dir);
+	void chunkAdjLerp(FCoOrds chunkOne, float lowNoise , FCoOrds dir);
+	void BlockHeightChange();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite )
 	TArray<TSubclassOf<AActor>> Test;

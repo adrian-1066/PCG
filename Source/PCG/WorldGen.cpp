@@ -65,6 +65,8 @@ void AWorldGen::BeginPlay()
 	ChunkAdjustment();
 	biomeCount = Biomes.Num();
 	CaveNoiseGenerator();
+	chunkMergeAdj();
+	BlockHeightChange();
 	SpawnCube();
 }
 
@@ -108,7 +110,7 @@ void AWorldGen::SpawnCube()
 									FVector SpawnLocation = FVector(ChunkXCoOrd + (t*100),ChunkYCoOrd + (r*100),(e*100));
 									FRotator SpawnRotation = FRotator(0.0f,0.0f,0.0f);
 									blocksSpawned++;
-									World->SpawnActor<AActor>(Test[WorldArray[q][w].ChunkType], SpawnLocation, SpawnRotation, SpawnParams);	
+									World->SpawnActor<AActor>(Test[WorldArray[q][w].ZArray[e].SecondArray[r].FirstArray[t]], SpawnLocation, SpawnRotation, SpawnParams);	
 								}
 							}
 							FChunk Temp;
@@ -265,12 +267,14 @@ void AWorldGen::PopulateChunk(int x, int y)
 		FSecondArray SecondArray;
 		for(int z = 0; z < ChunkYSize; z++)
 		{
+			//WorldArray[x][y].Heights.SecondArray.Add();
 			FArrayOne firstArray;
 			for(int q = 0; q < chunkXSize; q++)
 			{
 				firstArray.FirstArray.Add(-1);
 			}
 			SecondArray.SecondArray.Add(firstArray);
+			WorldArray[x][y].Heights.SecondArray.Add(firstArray);
 		}
 		zArray.ZArray.Add(SecondArray);
 	}
@@ -861,9 +865,9 @@ void AWorldGen::CaveNoiseGenerator()
 						float isAir = FMath::PerlinNoise3D(FVector((x + xMul + RandomSeed) / 5.0f,(y + yMul + RandomSeed)/5.0f,(z + RandomSeed)/5.0f));
 						//UE_LOG(LogTemp, Warning, TEXT("isAir is: %f"),isAir);
 						float tempChance = caveGenChacne;
-						if(WorldArray[worldX][worldY].ChunkType == 2)
+						if(WorldArray[worldX][worldY].ChunkType == 2 && z > 20)
 						{
-							tempChance -= (z/500);
+							tempChance -= (z/90);
 						}
 						else
 						{
@@ -897,33 +901,15 @@ void AWorldGen::CaveNoiseGenerator()
 						if(zHeight < 0.0f)
 						{
 							WorldArray[worldX][worldY].ZArray[z].SecondArray[y].FirstArray[x] = WorldArray[worldX][worldY].ChunkType;
+							
 						}
+
+						
 					}
 				}
 			}
 			
-/*
-			for(int x = 0; x < chunkXSize; x++ )
-			{
-				for(int y = 0; y < ChunkYSize; y++)
-				{
-					float zHeight = FMath::PerlinNoise2D(FVector2D(((x * RandomSeed )+ xMul + x),((y *RandomSeed)+ yMul + y)));
-					
-					zHeight += 1.0f;
-					zHeight *= 2;
-					int temp = FMath::FloorToInt(zHeight);
-					//temp *= 2;
-					for(int z = WorldArray[worldX][worldY].ChunkNoiseScale; z < WorldArray[worldX][worldY].ChunkNoiseScale + temp; z++)
-					{
-						float isBlock = FMath::PerlinNoise3D(FVector((x + xMul + RandomSeed) / 10.0f,(y + yMul + RandomSeed)/10.0f,(z + RandomSeed)/10.0f));
-						if(isBlock <= 0.7f)
-						{
-							WorldArray[worldX][worldY].ZArray[z].SecondArray[y].FirstArray[x] = WorldArray[worldX][worldY].ChunkType;
-						}
-						
-					}
-				}
-			}*/
+
 		}
 	}
 }
@@ -956,32 +942,23 @@ void AWorldGen::chunkMergeAdj()
 
 					//need to get direction
 					FCoOrds tempDir;
-					tempDir.x = firstCo.x - secondCo.x;
-					tempDir.y = firstCo.y - secondCo.y;
-
-					if(tempDir.x == 1)
-					{
-						//left
-					}
-					else if(tempDir.x == -1)
-					{
-						//right
-					}
-					else if(tempDir.y == 1)
-					{
-						//up
-					}
-					else if(tempDir.y == -1)
-					{
-						//down
-					}
-
 					
-
-					
-
-
-					
+					float oneHeight = WorldArray[firstCo.x][firstCo.y].ChunkNoiseScale;
+					float twoHeight = WorldArray[secondCo.x][secondCo.y].ChunkNoiseScale;
+					if(oneHeight > twoHeight)
+					{
+						//lerp one
+						tempDir.x = firstCo.x - secondCo.x;
+						tempDir.y = firstCo.y - secondCo.y;
+						chunkAdjLerp(firstCo, twoHeight, tempDir);
+					}
+					else if(twoHeight > oneHeight)
+					{
+						//lerp two
+						tempDir.x = secondCo.x - firstCo.x;
+						tempDir.y = secondCo.y - firstCo.y;
+						chunkAdjLerp(secondCo, oneHeight, tempDir);
+					}
 				}
 			}
 		}
@@ -989,25 +966,203 @@ void AWorldGen::chunkMergeAdj()
 	
 }
 
-void AWorldGen::chunkAdjLerp(FCoOrds chunkOne, FCoOrds chunkTwo, FCoOrds dir)
+void AWorldGen::chunkAdjLerp(FCoOrds chunkOne, float lowNoise, FCoOrds dir)
 {
 	
-	for(int x = chunkXSize/2; x > 0 || x < chunkXSize; x += dir.x)
+	//find z height for co ords
+	//lerp between high and low points
+	//add or minus based on lerp
+	//now lerp in own chunk
+	float halfX = chunkXSize -1;// /2;
+	float halfY = ChunkYSize -1;// /2;
+	float chunkNoise = WorldArray[chunkOne.x][chunkOne.y].ChunkNoiseScale;
+	float alphaInc = 0.9f;
+	int xMul = chunkOne.x * chunkXSize;
+	int yMul = chunkOne.y * ChunkYSize;
+
+	int intHalfX = FMath::FloorToInt(halfX);
+	int intHalfY = FMath::FloorToInt(halfY);
+	if(dir.x == 1)
 	{
-		for(int y = ChunkYSize/2; y > 0 || y < ChunkYSize; y += dir.y)
+		alphaInc /= intHalfX;
+		int xChange = 0;
+		for(int x = intHalfX; x >= 0; x--)
 		{
-			//find z height for co ords
-			//lerp between high and low points
-			//add or minus based on lerp
-			//now lerp in own chunk
-			for(int z1 = ChunkZSize -1; z1 > 0; z1--)
+			
+			for(int y = 0; y < ChunkYSize; y++)
 			{
-				
+				int newHeight = FMath::Lerp(chunkNoise, lowNoise, alphaInc*xChange);
+				float tempAdj = FMath::PerlinNoise3D(FVector(x + 0.1f + xMul + RandomSeed, y + 0.1f + yMul + RandomSeed, chunkNoise));
+				//tempAdj *= 2;
+				if(tempAdj >= 0)
+				{
+					tempAdj++;
+				}
+				else
+				{
+					tempAdj--;
+				}
+				//UE_LOG(LogTemp, Warning, TEXT("tempAdj is: %f"),tempAdj);
+				int adjustment = FMath::RoundToInt(tempAdj);
+				newHeight += adjustment;
+				for(int z = ChunkZSize - 1; z >= newHeight; z--)
+				{
+					WorldArray[chunkOne.x][chunkOne.y].ZArray[z].SecondArray[y].FirstArray[x] = -1;
+				}
+			}
+			xChange++;
+		}
+	}
+	else if(dir.x == -1)
+	{
+		//right
+		alphaInc /= intHalfX;
+		int xChange = 0;
+		for(int x = 0; x < chunkXSize; x++)
+		{
+			
+			for(int y = 0; y < ChunkYSize; y++)
+			{
+				int newHeight = FMath::Lerp(chunkNoise, lowNoise, alphaInc*xChange);
+				float tempAdj = FMath::PerlinNoise3D(FVector(x + 0.1f + xMul + RandomSeed, y + 0.1f + yMul + RandomSeed, chunkNoise));
+				//tempAdj *= 2;
+				if(tempAdj >= 0)
+				{
+					tempAdj++;
+				}
+				else
+				{
+					tempAdj--;
+				}
+				UE_LOG(LogTemp, Warning, TEXT("tempAdj is: %f"),tempAdj);
+				int adjustment = FMath::RoundToInt(tempAdj);
+				newHeight += adjustment;
+				for(int z = ChunkZSize - 1; z >= newHeight; z--)
+				{
+					WorldArray[chunkOne.x][chunkOne.y].ZArray[z].SecondArray[y].FirstArray[x] = -1;
+				}
+			}
+			xChange++;
+		}
+	}
+	else if(dir.y == 1)
+	{
+		//up
+		alphaInc /= intHalfY;
+		
+		for(int x = 0; x < chunkXSize; x++)
+		{
+			int xChange = 0;
+			for(int y = intHalfY; y >= 0; y--)
+			{
+				int newHeight = FMath::Lerp(chunkNoise, lowNoise, alphaInc*xChange);
+				float tempAdj = FMath::PerlinNoise3D(FVector(x + 0.1f + xMul + RandomSeed, y + 0.1f + yMul + RandomSeed, chunkNoise));
+				//tempAdj *= 2;
+				if(tempAdj >= 0)
+				{
+					tempAdj++;
+				}
+				else
+				{
+					tempAdj--;
+				}
+				UE_LOG(LogTemp, Warning, TEXT("tempAdj is: %f"),tempAdj);
+				int adjustment = FMath::RoundToInt(tempAdj);
+				newHeight += adjustment;
+				for(int z = ChunkZSize - 1; z >= newHeight; z--)
+				{
+					WorldArray[chunkOne.x][chunkOne.y].ZArray[z].SecondArray[y].FirstArray[x] = -1;
+				}
+				xChange++;
+			}
+			
+		}
+	}
+	else if(dir.y == -1)
+	{
+		//down
+		alphaInc /= intHalfY;
+		
+		for(int x = 0; x < chunkXSize; x++)
+		{
+			int xChange = 0;
+			
+			for(int y = 0; y < ChunkYSize; y++)
+			{
+				int newHeight = FMath::Lerp(chunkNoise, lowNoise, alphaInc*xChange);
+				float tempAdj = FMath::PerlinNoise3D(FVector(x + 0.1f + xMul + RandomSeed, y + 0.1f + yMul + RandomSeed, chunkNoise));
+				//tempAdj *= 2;
+				if(tempAdj >= 0)
+				{
+					tempAdj++;
+				}
+				else
+				{
+					tempAdj--;
+				}
+				UE_LOG(LogTemp, Warning, TEXT("tempAdj is: %f"),tempAdj);
+				int adjustment = FMath::RoundToInt(tempAdj);
+				newHeight += adjustment;
+				for(int z = ChunkZSize - 1; z >= newHeight; z--)
+				{
+					WorldArray[chunkOne.x][chunkOne.y].ZArray[z].SecondArray[y].FirstArray[x] = -1;
+				}
+				xChange++;
+			}
+			
+		}
+	}
+
+	
+}
+
+void AWorldGen::BlockHeightChange()
+{
+	for(int worldX = 0; worldX < worldSizeX; worldX++)
+	{
+		for(int worldY = 0; worldY < worldSizeY; worldY++)
+		{
+			for(int x = 0; x < chunkXSize; x++)
+			{
+				for(int y = 0; y < ChunkYSize; y++)
+				{
+					for(int z = 0; z < ChunkZSize; z++)
+					{
+						if(WorldArray[worldX][worldY].ZArray[z].SecondArray[y].FirstArray[x] != -1)
+						{
+							UE_LOG(LogTemp, Warning, TEXT("block is not air"));
+							if(z < WorldArray[worldX][worldY].ChunkNoiseScale - 3)
+							{
+								UE_LOG(LogTemp, Warning, TEXT("block is below surface"));
+								if(WorldArray[worldX][worldY].ChunkType != 2)
+								{
+									UE_LOG(LogTemp, Warning, TEXT("block is not in mountain"));
+									if(z > WorldArray[worldX][worldY].ChunkNoiseScale - 7)
+									{
+										UE_LOG(LogTemp, Warning, TEXT("block is not in stone area"));
+										WorldArray[worldX][worldY].ZArray[z].SecondArray[y].FirstArray[x] = 5;
+									}
+									else
+									{
+										WorldArray[worldX][worldY].ZArray[z].SecondArray[y].FirstArray[x] = 6;
+											
+										
+									}
+								}
+								else
+								{
+									WorldArray[worldX][worldY].ZArray[z].SecondArray[y].FirstArray[x] = 6;
+										
+									
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 	}
 }
-
 
 
 
