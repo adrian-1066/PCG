@@ -6,8 +6,22 @@
 // Sets default values
 AWorldGen::AWorldGen()
 {
-	srand(time(nullptr));
-	RandomSeed = FMath::RandRange(10000,99999);
+	
+
+	if(RandomSeed == 0)
+	{
+		//srand(time(nullptr));
+		RandomSeed = FMath::RandRange(10000,99999);
+		srand(RandomSeed);
+	}
+	else
+	{
+		srand(RandomSeed);
+			
+		
+	}
+	srand(RandomSeed);
+	
 	chunkXSize = 6;
 	ChunkYSize = 6;
 	ChunkZSize = 100;

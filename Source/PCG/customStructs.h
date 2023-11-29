@@ -13,7 +13,7 @@ USTRUCT(BlueprintType)
 struct PCG_API FArrayOne
 {
 	GENERATED_BODY()
-	UPROPERTY(BlueprintReadWrite, Category="someshit")
+	UPROPERTY(BlueprintReadWrite)
 	TArray<int32> FirstArray;
 
 	

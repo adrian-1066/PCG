@@ -22,20 +22,20 @@ public:
 	TArray<TArray<FChunk>> WorldArray;
 	TArray<FBiome> Biomes;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite )
-	int32 chunkXSize;
+	int chunkXSize;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite )
-	int32 ChunkYSize;
+	int ChunkYSize;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite )
-	int32 ChunkZSize;
+	int ChunkZSize;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite )
-	int32 worldSizeX;
+	int worldSizeX;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite )
-	int32 worldSizeY;
+	int worldSizeY;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int biomeCount;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int blocksSpawned;
-
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int RandomSeed;
 	int MaxNoiseScale;
 
