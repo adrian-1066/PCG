@@ -117,6 +117,13 @@ void AWorldGen::SpawnCube()
 						{
 							bool canSpawn = CheckForAir(q,w,t,r,e);
 							int blockIs = WorldArray[q][w].ZArray[e].SecondArray[r].FirstArray[t];
+							/*if(canSpawn)
+							{
+								FVector SpawnLocation = FVector(ChunkXCoOrd + (t*100),ChunkYCoOrd + (r*100),(e*100));
+								FRotator SpawnRotation = FRotator(0.0f,0.0f,0.0f);
+								blocksSpawned++;
+								World->SpawnActor<AActor>(Test[WorldArray[q][w].ChunkType], SpawnLocation, SpawnRotation, SpawnParams);
+							}*/
 							if(blockIs != -1)
 							{
 								if(canSpawn)
